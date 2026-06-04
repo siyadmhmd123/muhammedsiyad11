@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#0a0a0a;--card:#161616;--accent:#f5c518;--accent2:#e07b39;--text:#f0ede8;--muted:#888;--border:#222;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;}
+
+/* CANVAS BG */
+#bgCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+/* LENS FLARE */
+.lens-flare{position:fixed;pointer-events:none;z-index:1;}
+.flare-core{position:absolute;border-radius:50%;mix-blend-mode:screen;}
+
+/* GRAIN */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;opacity:0.35;}
+
+/* CONTENT */
+.content{position:relative;z-index:2;}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:60px 48px;position:relative;overflow:hidden;}
+.hero-eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:4px;color:var(--accent);text-transform:uppercase;margin-bottom:24px;opacity:0;animation:slideUp .6s .2s forwards;}
+.hero-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(72px,12vw,130px);line-height:.9;letter-spacing:2px;margin-bottom:32px;opacity:0;animation:slideUp .8s .4s forwards;}
+.hero-name span{display:block;background:linear-gradient(135deg,var(--text) 0%,var(--muted) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-name .aw{background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-role{font-size:13px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:40px;opacity:0;animation:slideUp .6s .6s forwards;}
+.hero-contacts{display:flex;flex-wrap:wrap;gap:12px;opacity:0;animation:slideUp .6s .8s forwards;}
+.cpill{font-family:'DM Mono',monospace;font-size:11px;padding:8px 16px;border:1px solid var(--border);border-radius:2px;color:var(--muted);letter-spacing:1px;transition:all .3s;}
+.cpill:hover{border-color:var(--accent);color:var(--accent);}
+.cpill a{color:inherit;text-decoration:none;}
+.scroll-ind{position:absolute;bottom:40px;left:48px;display:flex;align-items:center;gap:12px;opacity:0;animation:slideUp .6s 1.2s forwards;}
+.scroll-line{width:40px;height:1px;background:var(--accent);animation:expandLine 1s 1.5s forwards;transform-origin:left;transform:scaleX(0);}
+.scroll-txt{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;}
+
+/* DIVIDER */
+.sdiv{height:1px;background:linear-gradient(90deg,var(--accent) 0%,transparent 60%);margin:0 48px;}
+
+/* SECTIONS */
+.section{padding:80px 48px;opacity:0;transform:translateY(40px);transition:opacity .8s,transform .8s;}
+.section.visible{opacity:1;transform:translateY(0);}
+.shdr{display:flex;align-items:center;gap:20px;margin-bottom:48px;}
+.snum{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:2px;}
+.stitle{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:3px;line-height:1;}
+.sline{flex:1;height:1px;background:var(--border);}
+
+/* ABOUT */
+.summary-text{font-size:15px;line-height:1.9;color:#c0bdb8;max-width:700px;font-weight:300;border-left:2px solid var(--accent);padding-left:24px;}
+
+/* LIVE CAMERA SHUTTER WIDGET */
+.camera-widget{display:flex;align-items:center;gap:32px;flex-wrap:wrap;margin-top:40px;}
+.shutter-ring{width:120px;height:120px;position:relative;cursor:pointer;flex-shrink:0;}
+.shutter-ring svg{width:100%;height:100%;}
+.shutter-ring:hover .shutter-btn-inner{background:rgba(245,197,24,.15);}
+.click-hint{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:8px;text-align:center;}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex:1;min-width:240px;}
+.stat-box{background:var(--card);border:1px solid var(--border);padding:16px;border-radius:2px;text-align:center;transition:border-color .3s;}
+.stat-box:hover{border-color:var(--accent);}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--accent);line-height:1;}
+.stat-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
+
+/* PORTFOLIO */
+.pf-filter{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:36px;}
+.fbtn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:7px 16px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .25s;border-radius:2px;}
+.fbtn:hover,.fbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(245,197,24,.06);}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:2px;}
+.pitem{position:relative;aspect-ratio:4/3;overflow:hidden;cursor:pointer;background:var(--card);}
+.pitem img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.23,1,.32,1),filter .4s;filter:grayscale(20%);}
+.pitem:hover img{transform:scale(1.08);filter:grayscale(0%);}
+.povl{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,transparent 55%);opacity:0;transition:opacity .4s;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;}
+.pitem:hover .povl{opacity:1;}
+.ptitle{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--text);margin-bottom:4px;transform:translateY(10px);transition:transform .4s;}
+.pitem:hover .ptitle{transform:translateY(0);}
+.ptag{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;transform:translateY(10px);transition:transform .45s;}
+.pitem:hover .ptag{transform:translateY(0);}
+.plink{position:absolute;top:14px;right:14px;width:32px;height:32px;background:var(--accent);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .3s;border-radius:2px;}
+.pitem:hover .plink{opacity:1;}
+.plink svg{width:14px;height:14px;fill:var(--bg);}
+.pitem.hidden{display:none;}
+.bcta{margin-top:24px;display:inline-flex;align-items:center;gap:12px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(245,197,24,.3);padding-bottom:4px;transition:border-color .3s;}
+.bcta:hover{border-color:var(--accent);}
+
+/* EXPERIENCE */
+.egrid{display:grid;gap:2px;}
+.ecard{background:var(--card);border:1px solid var(--border);padding:32px;position:relative;overflow:hidden;transition:all .4s cubic-bezier(.23,1,.32,1);}
+.ecard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transition:transform .4s cubic-bezier(.23,1,.32,1);transform-origin:bottom;}
+.ecard:hover::before{transform:scaleY(1);}
+.ecard:hover{background:#1a1a1a;transform:translateX(6px);}
+.etop{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:8px;}
+.eco{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;}
+.edate{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:2px;padding:4px 10px;border:1px solid rgba(245,197,24,.3);border-radius:2px;white-space:nowrap;}
+.erole{font-size:11px;letter-spacing:3px;color:var(--accent2);text-transform:uppercase;margin-bottom:16px;}
+.edesc{font-size:13px;line-height:1.8;color:var(--muted);font-weight:300;}
+
+/* LIVE SKILLS BARS */
+.skill-bar-wrap{display:grid;gap:16px;}
+.sbar-row{display:flex;flex-direction:column;gap:6px;}
+.sbar-label{display:flex;justify-content:space-between;}
+.sbar-name{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--text);text-transform:uppercase;}
+.sbar-pct{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);}
+.sbar-track{height:2px;background:var(--border);border-radius:1px;overflow:hidden;}
+.sbar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:1px;width:0;transition:width 1.4s cubic-bezier(.23,1,.32,1);}
+
+/* EDUCATION */
+.edu-card{background:var(--card);border:1px solid var(--border);padding:28px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;transition:border-color .3s;margin-bottom:2px;}
+.edu-card:hover{border-color:var(--accent);}
+.edu-inst{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:4px;}
+.edu-deg{font-size:12px;color:var(--muted);letter-spacing:1px;}
+.edu-badge{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);border:1px solid rgba(245,197,24,.4);padding:6px 14px;border-radius:2px;white-space:nowrap;}
+
+/* LIVE CLOCK / FOOTER */
+.footer{padding:40px 48px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+.footer-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:4px;color:var(--muted);}
+.live-clock{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);letter-spacing:3px;}
+.avail-badge{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;color:#4ade80;text-transform:uppercase;}
+.avail-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:pulse-green 2s infinite;}
+
+/* CURSOR */
+.cursor{width:8px;height:8px;border-radius:50%;background:var(--accent);position:fixed;pointer-events:none;z-index:9999;mix-blend-mode:difference;}
+.cursor-ring{width:36px;height:36px;border-radius:50%;border:1px solid rgba(245,197,24,.5);position:fixed;pointer-events:none;z-index:9998;}
+
+/* ANIMATIONS */
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes expandLine{to{transform:scaleX(1)}}
+@keyframes pulse-green{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+@keyframes spinRing{to{transform:rotate(360deg)}}
+@keyframes shutterFlash{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+
+<!-- Particle canvas -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<div class="content">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">📸 &nbsp; Visual Creative · Abu Dhabi, UAE</div>
+  <h1 class="hero-name">
+    <span>MUHAMMED</span>
+    <span class="aw">SIYAD</span>
+  </h1>
+  <div class="hero-role">Product Photographer &nbsp;·&nbsp; Image Editor &nbsp;·&nbsp; Graphic Designer</div>
+  <div class="hero-contacts">
+    <div class="cpill">siyadmohammed0@gmail.com</div>
+    <div class="cpill">+971 52 694 5475</div>
+    <div class="cpill">Abu Dhabi, UAE</div>
+    <div class="cpill"><a href="https://www.behance.net/muhammedsiyad1" target="_blank">Behance ↗</a></div>
+  </div>
+  <div class="scroll-ind">
+    <div class="scroll-line"></div>
+    <div class="scroll-txt">Scroll to explore</div>
+  </div>
+</section>
+
+<div class="sdiv"></div>
+
+<!-- ABOUT + LIVE WIDGETS -->
+<section class="section" id="s1">
+  <div class="shdr"><span class="snum">01 /</span><h2 class="stitle">ABOUT</h2><div class="sline"></div></div>
+  <p class="summary-text">Accomplished product photographer and image editor with extensive experience capturing high-quality visuals for retail, motorcycle brands, and weddings. Expert in Adobe Photoshop, Illustrator, background removal, and quality assurance — with a creative eye for brand storytelling across digital platforms.</p>
+
+  <!-- LIVE CAMERA WIDGET -->
+  <div class="camera-widget">
+    <div>
+      <div class="shutter-ring" id="shutterRing" title="Click to shoot!">
+        <svg viewBox="0 0 120 120" id="shutterSvg">
+          <!-- Outer spinning ring -->
+          <circle cx="60" cy="60" r="55" fill="none" stroke="#222" stroke-width="1"/>
+          <circle cx="60" cy="60" r="55" fill="none" stroke="url(#arcGrad)" stroke-width="1.5" stroke-dasharray="120 227" id="spinArc"/>
+          <!-- Middle ring -->
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#1a1a1a" stroke-width="8"/>
+          <!-- Aperture blades -->
+          <g id="aperture" style="transform-origin:60px 60px">
+            <path d="M60 60 L60 20 A40 40 0 0 1 94.6 40 Z" fill="#1a1a1a" opacity=".9"/>
+            <path d="M60 60 L94.6 40 A40 40 0 0 1 94.6 80 Z" fill="#161616" opacity=".9"/>
+            <path d="M60 60 L94.6 80 A40 40 0 0 1 60 100 Z" fill="#1a1a1a" opacity=".9"/>
+            <path d="M60 60 L60 100 A40 40 0 0 1 25.4 80 Z" fill="#161616" opacity=".9"/>
+            <path d="M60 60 L25.4 80 A40 40 0 0 1 25.4 40 Z" fill="#1a1a1a" opacity=".9"/>
+            <path d="M60 60 L25.4 40 A40 40 0 0 1 60 20 Z" fill="#161616" opacity=".9"/>
+          </g>
+          <!-- Inner lens -->
+          <circle cx="60" cy="60" r="26" fill="#0d0d0d" stroke="#f5c518" stroke-width=".5"/>
+          <circle cx="60" cy="60" r="20" fill="#0a0a0a"/>
+          <circle cx="60" cy="60" r="12" fill="#111" stroke="#333" stroke-width=".5"/>
+          <!-- Lens gleam -->
+          <ellipse cx="54" cy="54" rx="4" ry="2.5" fill="white" opacity=".12" transform="rotate(-30 54 54)"/>
+          <!-- Flash overlay -->
+          <circle cx="60" cy="60" r="58" fill="white" opacity="0" id="flashCircle"/>
+          <!-- Gradient def -->
+          <defs>
+            <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#f5c518"/>
+              <stop offset="100%" stop-color="#e07b39"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="click-hint">click to shoot</div>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-num" id="shotCount">0</div><div class="stat-lbl">Shots Taken</div></div>
+      <div class="stat-box"><div class="stat-num">8+</div><div class="stat-lbl">Years Exp</div></div>
+      <div class="stat-box"><div class="stat-num">3</div><div class="stat-lbl">Brands</div></div>
+      <div class="stat-box"><div class="stat-num">12</div><div class="stat-lbl">Projects</div></div>
+      <div class="stat-box"><div class="stat-num">∞</div><div class="stat-lbl">Creativity</div></div>
+      <div class="stat-box"><div class="stat-num" id="liveHr">--</div><div class="stat-lbl">UAE Time Hr</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="sdiv"></div>
+
+<!-- PORTFOLIO -->
+<section class="section" id="s2">
+  <div class="shdr"><span class="snum">02 /</span><h2 class="stitle">WORKS</h2><div class="sline"></div></div>
+  <div class="pf-filter">
+    <button class="fbtn active" data-filter="all">All</button>
+    <button class="fbtn" data-filter="photography">Photography</button>
+    <button class="fbtn" data-filter="design">Design</button>
+    <button class="fbtn" data-filter="branding">Branding</button>
+    <button class="fbtn" data-filter="video">Video</button>
+  </div>
+  <div class="pgrid" id="pgrid">
+    <a href="https://www.behance.net/gallery/242812277/Product-photography-images-mockups-editing" target="_blank" class="pitem" data-cat="photography"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/81e2d3242812277.Y3JvcCwyNDgwLDE5MzksMCww.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Product Photography Mockups</div><div class="ptag">Photography · Editing</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/242811317/Raw-product-photography-with-white-background" target="_blank" class="pitem" data-cat="photography"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/f39bfc242811317.Y3JvcCwxNDAwLDEwOTUsMCwzMQ.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Raw Product Photography</div><div class="ptag">Photography · White BG</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/203795795/honey-photoshoot" target="_blank" class="pitem" data-cat="photography"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/ec9d96203795795.Y3JvcCw1MzQ0LDQxNzksMCwyNjU4.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Honey Photoshoot</div><div class="ptag">Photography · Lifestyle</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/245368149/flower-editing" target="_blank" class="pitem" data-cat="photography"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/608276245368149.69ac12a71c73e.png" alt="" loading="lazy"><div class="povl"><div class="ptitle">Flower Editing</div><div class="ptag">Photography · Retouching</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/244910785/perfume-short-video" target="_blank" class="pitem" data-cat="video"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/f1d815244910785.69a1993b1bbe6.png" alt="" loading="lazy"><div class="povl"><div class="ptitle">Perfume Short Video</div><div class="ptag">Video · Motion</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/192904955/website-banner-design" target="_blank" class="pitem" data-cat="design"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/e378f6192904955.Y3JvcCw5MzQsNzMxLDUzMiww.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Website Banner Design</div><div class="ptag">Design · Digital</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/192905253/poster-design" target="_blank" class="pitem" data-cat="design"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/4c06d5192905253.Y3JvcCwxNTAwLDExNzMsMCwxNjM.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Poster Design</div><div class="ptag">Design · Print</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/192905067/booklet-brochure-design" target="_blank" class="pitem" data-cat="branding"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/5d0bed192905067.Y3JvcCwzMDE3LDIzNjAsMjYxLDA.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Booklet / Brochure Design</div><div class="ptag">Branding · Print</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/250391455/Logo-design-with-mockup" target="_blank" class="pitem" data-cat="branding"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/e03540250391455.Y3JvcCw2MTAwLDQ3NzEsMCwxMjA.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Logo Design with Mockup</div><div class="ptag">Branding · Identity</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/250325359/Youtube-Thumbnails" target="_blank" class="pitem" data-cat="design"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/617fa0250325359.Y3JvcCwxMzA5LDEwMjQsMTEzLDA.jpeg" alt="" loading="lazy"><div class="povl"><div class="ptitle">YouTube Thumbnails</div><div class="ptag">Design · Social Media</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/250492517/RESUME-IN-GRAPHICS" target="_blank" class="pitem" data-cat="design"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/081828250492517.6a205b7fc7e85.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Resume in Graphics</div><div class="ptag">Design · Layout</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+    <a href="https://www.behance.net/gallery/250492463/RESUME-IN-GRAPHICS" target="_blank" class="pitem" data-cat="design"><img src="https://mir-s3-cdn-cf.behance.net/projects/404/b40e72250492463.6a205b4159080.jpg" alt="" loading="lazy"><div class="povl"><div class="ptitle">Resume in Graphics II</div><div class="ptag">Design · Layout</div></div><div class="plink"><svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg></div></a>
+  </div>
+  <a href="https://www.behance.net/muhammedsiyad1" target="_blank" class="bcta">View full portfolio on Behance ↗</a>
+</section>
+
+<div class="sdiv"></div>
+
+<!-- EXPERIENCE -->
+<section class="section" id="s3">
+  <div class="shdr"><span class="snum">03 /</span><h2 class="stitle">EXPERIENCE</h2><div class="sline"></div></div>
+  <div class="egrid">
+    <div class="ecard"><div class="etop"><div class="eco">Instashop DMCC</div><div class="edate">MAR 2025 — PRESENT</div></div><div class="erole">Product Photographer / Image Editor</div><div class="edesc">Capturing and editing product images for pharmacies and supermarket retailers. Background removal, cleanup, and quality audits for consistent visual assets.</div></div>
+    <div class="ecard"><div class="etop"><div class="eco">Alkhubaizi Motorcycles</div><div class="edate">DEC 2022 — FEB 2025</div></div><div class="erole">Graphic Designer / Photographer</div><div class="edesc">Designed websites, ads, and social media banners. High-quality product photography and editing across multiple digital platforms.</div></div>
+    <div class="ecard"><div class="etop"><div class="eco">Wedding Thoughts Photography</div><div class="edate">FEB 2019 — OCT 2022</div></div><div class="erole">Wedding Album Designer / Photographer</div><div class="edesc">Full-cycle photoshoots from outdoor setup to bespoke album design. Logo, business card, and packaging design across multiple simultaneous projects.</div></div>
+    <div class="ecard"><div class="etop"><div class="eco">Dreamzone Designing College</div><div class="edate">OCT 2017 — DEC 2018</div></div><div class="erole">Graphic Design Teacher</div><div class="edesc">Instructed students in graphic design fundamentals and professional creative tools.</div></div>
+  </div>
+</section>
+
+<div class="sdiv"></div>
+
+<!-- SKILLS WITH ANIMATED BARS -->
+<section class="section" id="s4">
+  <div class="shdr"><span class="snum">04 /</span><h2 class="stitle">SKILLS</h2><div class="sline"></div></div>
+  <div class="skill-bar-wrap" id="skillBars">
+    <div class="sbar-row"><div class="sbar-label"><span class="sbar-name">Adobe Photoshop</span><span class="sbar-pct">97%</span></div><div class="sbar-track"><div class="sbar-fill" data-w="97"></div></div></div>
+    <div class="sbar-row"><div class="sbar-label"><span class="sbar-name">Product Photography</span><span class="sbar-pct">95%</span></div><div class="sbar-track"><div class="sbar-fill" data-w="95"></div></div></div>
+    <div class="sbar-row"><div class="sbar-label"><span class="sbar-name">Adobe Illustrator</span><span class="sbar-pct">90%</span></div><div class="sbar-track"><div class="sbar-fill" data-w="90"></div></div></div>
+    <div class="sbar-row"><div class="sbar-label"><span class="sbar-name">Graphic Design</span><span class="sbar-pct">92%</span></div><div class="sbar-track"><div class="sbar-fill" data-w="92"></div></div></div>
+    <div class="sbar-row"><div class="sbar-label"><span class="sbar-name">Image Retouching</span><span class="sbar-pct">96%</span></div><div class="sbar-track"><div class="sbar-fill" data-w="96"></div></div></div>
+    <div class="sbar-row"><div class="sbar-label"><span class="sbar-name">Brand Identity</span><span class="sbar-pct">85%</span></div><div class="sbar-track"><div class="sbar-fill" data-w="85"></div></div></div>
+  </div>
+</section>
+
+<div class="sdiv"></div>
+
+<!-- EDUCATION -->
+<section class="section" id="s5">
+  <div class="shdr"><span class="snum">05 /</span><h2 class="stitle">EDUCATION & CERTS</h2><div class="sline"></div></div>
+  <div class="edu-card"><div><div class="edu-inst">Dreamzone Designing College</div><div class="edu-deg">Diploma of Higher Education · Multimedia</div></div><div class="edu-badge">DIPLOMA</div></div>
+  <div class="edu-card"><div><div class="edu-inst">DreamZone School of Creative Studies</div><div class="edu-deg">Art Director, Graphic Designer Certification · Jan 2019</div></div><div class="edu-badge">CERTIFIED</div></div>
+</section>
+
+<!-- FOOTER WITH LIVE CLOCK -->
+<footer class="footer">
+  <div class="footer-name">MUHAMMED SIYAD</div>
+  <div class="avail-badge"><div class="avail-dot"></div>Available for freelance</div>
+  <div class="live-clock" id="liveClock">--:--:--</div>
+</footer>
+
+</div><!-- /content -->
+
+<script>
+// ── PARTICLE CANVAS ──
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize(){
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class Particle {
+  constructor(){this.reset();}
+  reset(){
+    this.x = Math.random()*W;
+    this.y = Math.random()*H;
+    this.vx = (Math.random()-.5)*.3;
+    this.vy = (Math.random()-.5)*.3;
+    this.r = Math.random()*1.5+.3;
+    this.alpha = Math.random()*.5+.1;
+    this.gold = Math.random()>.7;
+  }
+  update(){
+    this.x+=this.vx; this.y+=this.vy;
+    if(this.x<0||this.x>W||this.y<0||this.y>H) this.reset();
+  }
+  draw(){
+    ctx.beginPath();
+    ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fillStyle = this.gold ? `rgba(245,197,24,${this.alpha})` : `rgba(240,237,232,${this.alpha*.4})`;
+    ctx.fill();
+  }
+}
+
+for(let i=0;i<120;i++) particles.push(new Particle());
+
+// Connection lines
+function drawConnections(){
+  for(let i=0;i<particles.length;i++){
+    for(let j=i+1;j<particles.length;j++){
+      const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<100){
+        ctx.beginPath();
+        ctx.strokeStyle=`rgba(245,197,24,${.08*(1-d/100)})`;
+        ctx.lineWidth=.5;
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animParticles(){
+  ctx.clearRect(0,0,W,H);
+  particles.forEach(p=>{p.update();p.draw();});
+  drawConnections();
+  requestAnimationFrame(animParticles);
+}
+animParticles();
+
+// ── CURSOR ──
+const cursorEl=document.getElementById('cursor');
+const ringEl=document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX;my=e.clientY;
+  cursorEl.style.left=(mx-4)+'px';cursorEl.style.top=(my-4)+'px';
+});
+(function animRing(){
+  rx+=(mx-rx-18)*.12; ry+=(my-ry-18)*.12;
+  ringEl.style.left=rx+'px'; ringEl.style.top=ry+'px';
+  requestAnimationFrame(animRing);
+})();
+
+// ── SCROLL REVEAL ──
+const sections=document.querySelectorAll('.section');
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('visible');
+      // Animate skill bars when s4 visible
+      if(e.target.id==='s4'){
+        setTimeout(()=>{
+          document.querySelectorAll('.sbar-fill').forEach(b=>{
+            b.style.width=b.dataset.w+'%';
+          });
+        },200);
+      }
+    }
+  });
+},{threshold:.08});
+sections.forEach(s=>obs.observe(s));
+
+// ── CAMERA SHUTTER ──
+let shotCount=0;
+const shutter=document.getElementById('shutterRing');
+const flashCircle=document.getElementById('flashCircle');
+const spinArc=document.getElementById('spinArc');
+const aperture=document.getElementById('aperture');
+const shotCountEl=document.getElementById('shotCount');
+
+// Spin the arc continuously
+let arcAngle=0;
+(function spinArcFn(){
+  arcAngle+=.8;
+  spinArc.setAttribute('transform',`rotate(${arcAngle} 60 60)`);
+  requestAnimationFrame(spinArcFn);
+})();
+
+// Aperture gentle pulse
+let apAngle=0, apDir=1;
+(function pulseAperture(){
+  apAngle+=apDir*.15;
+  if(apAngle>6||apAngle<-6) apDir*=-1;
+  aperture.style.transform=`rotate(${apAngle}deg)`;
+  requestAnimationFrame(pulseAperture);
+})();
+
+shutter.addEventListener('click',()=>{
+  shotCount++;
+  shotCountEl.textContent=shotCount;
+  // Flash
+  flashCircle.style.animation='none';
+  void flashCircle.offsetWidth;
+  flashCircle.style.animation='shutterFlash .4s ease-out forwards';
+  // Aperture snap
+  aperture.style.transform='rotate(45deg) scale(.7)';
+  setTimeout(()=>{ aperture.style.transition='transform .3s'; aperture.style.transform='rotate(0deg) scale(1)'; },80);
+});
+
+// ── PORTFOLIO FILTER ──
+document.querySelectorAll('.fbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const f=btn.dataset.filter;
+    document.querySelectorAll('.pitem').forEach(item=>{
+      item.classList.toggle('hidden', f!=='all' && item.dataset.cat!==f);
+    });
+  });
+});
+
+// ── LIVE CLOCK (UAE = UTC+4) ──
+function updateClock(){
+  const now=new Date();
+  const uae=new Date(now.getTime()+(now.getTimezoneOffset()*60000)+(4*3600000));
+  const h=String(uae.getHours()).padStart(2,'0');
+  const m=String(uae.getMinutes()).padStart(2,'0');
+  const s=String(uae.getSeconds()).padStart(2,'0');
+  document.getElementById('liveClock').textContent=`UAE ${h}:${m}:${s}`;
+  document.getElementById('liveHr').textContent=h;
+}
+setInterval(updateClock,1000);
+updateClock();
+</script>
+</body>
+</html>
